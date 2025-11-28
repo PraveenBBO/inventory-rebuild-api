@@ -12,6 +12,7 @@ const db = {};
 const sequelize = new Sequelize(config.database, config.username, config.password, {
   ...config,
   dialect: 'postgres',
+  timezone: 'America/Los_Angeles',
   define: {
     underscored: true,
     freezeTableName: true,

@@ -10,7 +10,9 @@ module.exports = {
         type: Sequelize.INTEGER
       },
       name: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
+        allowNull: false,
+        unique: true
       },
       order_no: {
         type: Sequelize.INTEGER
@@ -33,7 +35,11 @@ module.exports = {
         allowNull: true,
       },
     });
+    await queryInterface.sequelize.query(
+        `CREATE UNIQUE INDEX unique_lower_name ON product_categories (LOWER(name));`
+    );
   },
+
   async down(queryInterface, Sequelize) {
     await queryInterface.dropTable('product_categories');
   }

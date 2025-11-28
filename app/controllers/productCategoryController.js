@@ -7,6 +7,7 @@ const {
     getCategoryById,
     deleteCategory
 } = require("@services/productCategoryService");
+const {UniqueConstraintError} = require("sequelize");
 
 //Get All category
 exports.getAll = AsyncHandler(async (req, res) => {
@@ -14,21 +15,30 @@ exports.getAll = AsyncHandler(async (req, res) => {
         sendSuccess(res, categories);
 });
 
+function validateCategoryInput(name, order_no, status) {
+    const errors = {};
+    if (!name || name.trim() === '') errors.name = 'Name is required.';
+    if (order_no !== undefined && isNaN(order_no)) errors.order_no = 'Order number must be a number.';
+    if (status && !['active', 'inactive'].includes(status)) errors.status = 'Invalid status value.';
+    return errors;
+}
 //Create a category
 exports.create = AsyncHandler(async (req, res) => {
-        const {name, order_no, status} = req.body;
-
-        const errors = {};
-        if (!name || name.trim() === '') errors.name = 'Name is required.';
-        if (order_no !== undefined && isNaN(order_no)) errors.order_no = 'Order number must be a number.';
-        if (status && !['active', 'inactive'].includes(status)) errors.status = 'Invalid status value.';
-
-        if (Object.keys(errors).length > 0) {
-            return sendError(res, errors, 422);
+    const {name, order_no, status} = req.body;
+    // Validation
+    const errors = validateCategoryInput(name, order_no, status);
+    if (Object.keys(errors).length > 0) {
+        return sendError(res, errors, 422);
+    }
+    try {
+        const category = await createCategory({ name, order_no, status });
+        return sendSuccess(res, category);
+    } catch (err) {
+        if (err instanceof UniqueConstraintError) {
+            return sendError(res, 'Name must be unique.', 422);
         }
-
-        const category = await createCategory({name, order_no, status});
-        sendSuccess(res, category);
+        return sendError(res, 'Something went wrong.', 500);
+    }
 });
 
 //Update category
@@ -37,17 +47,20 @@ exports.update = AsyncHandler(async (req, res) => {
     const { name, order_no, status } = req.body;
 
     // Validation
-    const errors = {};
-    if (!name || name.trim() === '') errors.name = 'Name is required.';
-    if (order_no !== undefined && isNaN(order_no)) errors.order_no = 'Order number must be a number.';
-    if (status && !['active', 'inactive'].includes(status)) errors.status = 'Invalid status value.';
-
+    const errors = validateCategoryInput(name, order_no, status);
     if (Object.keys(errors).length > 0) {
         return sendError(res, errors, 422);
     }
 
-    const updated = await updateCategory(id, { name, order_no, status });
-    sendSuccess(res, updated);
+    try {
+        const updated = await updateCategory(id, { name, order_no, status });
+        sendSuccess(res, updated);
+    } catch (err) {
+        if (err instanceof UniqueConstraintError) {
+            return sendError(res, 'Name must be unique.', 422);
+        }
+        return sendError(res, 'Something went wrong.', 500);
+    }
 
 });
 
